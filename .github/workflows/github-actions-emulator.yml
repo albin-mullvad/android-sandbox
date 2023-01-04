@@ -13,6 +13,13 @@ jobs:
           os: [ubuntu-latest, macos-latest]
           api: [32] #26, 27, 28, 29, 30, 31, 32 ,33
           emutype: [google_apis] # default, aosp_atd, google_apis, playstore
+
+          include:
+            - os: ubuntu-latest
+              emulator-options: -no-snapshot-save -no-window -noaudio -no-boot-anim -camera-back none
+            - os: ubuntu-latest
+              emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+
         fail-fast: false
       runs-on: ${{ matrix.os }}
       steps:
@@ -32,14 +39,14 @@ jobs:
               api-level: ${{ matrix.api }}
               target: ${{ matrix.emutype }}
               arch: x86_64
-              emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+              emulator-options: ${{ matrix.emulator-options }}
               disable-animations: true
               profile: pixel
               script: github-actions-emulator/gradlew -p github-actions-emulator connectedCheck
           - name: Upload outputs and reports
             uses: actions/upload-artifact@v3
             with:
-              name: outputs-and-reports
+              name: outputs-and-reports-${{ matrix.os }}
               path: |
                 github-actions-emulator/app/build/outputs
                 github-actions-emulator/app/build/reports
