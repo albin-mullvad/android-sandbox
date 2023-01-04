@@ -33,3 +33,13 @@ jobs:
                 disable-animations: true
                 profile: pixel
                 script: github-actions-emulator/gradlew -p github-actions-emulator connectedCheck
+
+            - name: Upload outputs and reports
+              uses: actions/upload-artifact@v3
+              with:
+                name: outputs-and-reports
+                path: |
+                  github-actions-emulator/app/build/outputs
+                  github-actions-emulator/app/build/reports
+                if-no-files-found: error
+                retention-days: 1
