@@ -5,9 +5,14 @@ on:
         - wip-uia
     workflow_dispatch:
 jobs:
+    os_matrix:
+      strategy:
+        matrix:
+          os: [ubuntu-latest, macos-latest]
+
     instrumented-tests:
         name: uia tests
-        runs-on: macos-latest
+        runs-on: ${{ matrix.os }}
         timeout-minutes: 60
         strategy:
             matrix:
