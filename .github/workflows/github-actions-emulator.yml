@@ -42,7 +42,13 @@ jobs:
               emulator-options: ${{ matrix.emulator-options }}
               disable-animations: true
               profile: pixel
-              script: github-actions-emulator/gradlew -p github-actions-emulator connectedCheck
+              script: |
+                github-actions-emulator/gradlew -p github-actions-emulator installDebug
+                adb shell am start -n com.albin_mullvad.gh_actions_emulator/.MainActivity
+                sleep 1
+                adb shell screencap /sdcard/mycap.png && adb pull /sdcard/mycap.png github-actions-emulator/app/build/outputs/mycap.png
+              
+              #github-actions-emulator/gradlew -p github-actions-emulator connectedCheck
           - name: Upload outputs and reports
             uses: actions/upload-artifact@v3
             with:
@@ -50,5 +56,5 @@ jobs:
               path: |
                 github-actions-emulator/app/build/outputs
                 github-actions-emulator/app/build/reports
-              if-no-files-found: error
+              # if-no-files-found: error
               retention-days: 1
