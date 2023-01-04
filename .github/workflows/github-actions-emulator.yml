@@ -10,13 +10,13 @@ jobs:
       timeout-minutes: 60
       strategy:
         matrix:
-          os: [ubuntu-latest, macos-latest]
+          # os: [macos-latest]
           api: [32] #26, 27, 28, 29, 30, 31, 32 ,33
           emutype: [google_apis] # default, aosp_atd, google_apis, playstore
 
           include:
-            - os: ubuntu-latest
-              emulator-options: -no-snapshot-save -no-window -noaudio -no-boot-anim -camera-back none
+            # - os: ubuntu-latest
+            #   emulator-options: -no-snapshot-save -no-window -noaudio -no-boot-anim -camera-back none
             - os: macos-latest
               emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
 
@@ -45,10 +45,11 @@ jobs:
               script: |
                 github-actions-emulator/gradlew -p github-actions-emulator installDebug
                 adb shell am start -n com.albin_mullvad.gh_actions_emulator/.MainActivity
-                sleep 1
                 adb shell mkdir /sdcard/capture
+                sleep 10
+                adb shell screencap /sdcard/capture/mycap1.png
                 adb shell uiautomator dump -f /sdcard/capture/mydump.xml
-                adb shell screencap /sdcard/capture/mycap.png
+                adb shell screencap /sdcard/capture/mycap2.png
                 adb pull /sdcard/capture github-actions-emulator/app/build/outputs
               
               #github-actions-emulator/gradlew -p github-actions-emulator connectedCheck
