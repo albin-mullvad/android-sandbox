@@ -60,4 +60,7 @@ dependencies {
     androidTestImplementation "androidx.compose.ui:ui-test-junit4:$compose_ui_version"
     debugImplementation "androidx.compose.ui:ui-tooling:$compose_ui_version"
     debugImplementation "androidx.compose.ui:ui-test-manifest:$compose_ui_version"
+
+    androidTestImplementation('androidx.test.uiautomator:uiautomator:2.2.0')
+    androidTestImplementation 'org.hamcrest:hamcrest-integration:1.3'
 }
