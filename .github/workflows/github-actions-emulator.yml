@@ -1,5 +1,8 @@
 name: Github actions emulator
 on:
+    push:
+      branches:
+        - wip-uia
     workflow_dispatch:
 jobs:
     instrumented-tests:
