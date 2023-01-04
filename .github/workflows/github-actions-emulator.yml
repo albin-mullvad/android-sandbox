@@ -46,7 +46,10 @@ jobs:
                 github-actions-emulator/gradlew -p github-actions-emulator installDebug
                 adb shell am start -n com.albin_mullvad.gh_actions_emulator/.MainActivity
                 sleep 1
-                adb shell screencap /sdcard/mycap.png && adb pull /sdcard/mycap.png github-actions-emulator/app/build/outputs/mycap.png
+                adb shell mkdir /sdcard/capture
+                adb shell uiautomator dump -f /sdcard/capture/mydump.xml
+                adb shell screencap /sdcard/capture/mycap.png
+                adb pull /sdcard/capture github-actions-emulator/app/build/outputs
               
               #github-actions-emulator/gradlew -p github-actions-emulator connectedCheck
           - name: Upload outputs and reports
