@@ -23,6 +23,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+
         setContent {
             val state = _state.collectAsState().value
 
@@ -34,7 +35,10 @@ class MainActivity : ComponentActivity() {
                 ) {
                     Column {
                         Greeting(state)
-                        Button(onClick = { _state.value = "Two" }) {
+                        Button(onClick = {
+                            Thread.sleep(1000)
+                            _state.value = "Two"
+                        }) {
                             Text(text = "Change!")
                         }
                     }

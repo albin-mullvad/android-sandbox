@@ -4,16 +4,14 @@ import android.content.Context
 import android.content.Intent
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.platform.app.InstrumentationRegistry
-import androidx.test.ext.junit.runners.AndroidJUnit4
+import androidx.test.runner.AndroidJUnit4
 import androidx.test.uiautomator.By
 import androidx.test.uiautomator.UiDevice
 import androidx.test.uiautomator.Until
 import org.hamcrest.CoreMatchers.notNullValue
-
+import org.junit.Assert.*
 import org.junit.Test
 import org.junit.runner.RunWith
-
-import org.junit.Assert.*
 
 /**
  * Instrumented test, which will execute on an Android device.
@@ -34,6 +32,7 @@ class UiaTest {
         // Wait for launcher
         val launcherPackage: String = device.launcherPackageName
         assertThat(launcherPackage, notNullValue())
+//        assertNotNull(launcherPackage)
         device.wait(
             Until.hasObject(By.pkg(launcherPackage).depth(0)),
             3000
@@ -56,10 +55,22 @@ class UiaTest {
             3000
         )
 
-        assertNotNull(device.findObject(By.text("Hello One!")))
+        val selectorOne = By.text("Hello One!")
+
+        device.wait(
+            Until.hasObject(selectorOne),
+            3000
+        )
+
+
+        assertThat(device.findObject(selectorOne), notNullValue())
 
         device.findObject(By.text("Change!")).click()
 
-        assertNotNull(device.findObject(By.text("Hello Two!")))
+        assertThat(device.findObject(By.text("Hello Two!")), notNullValue())
+    }
+
+    @Test
+    fun uiaTest2() {
     }
 }
