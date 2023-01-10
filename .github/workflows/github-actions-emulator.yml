@@ -86,7 +86,7 @@ jobs:
                 ARCHITECTURES="${{ matrix.abi }}"
                 UNSTRIPPED_LIB_PATH="$CARGO_TARGET_DIR/${{ matrix.target }}/$BUILD_TYPE/libmullvad_jni.so"
                 STRIPPED_LIB_PATH="./android/app/build/extraJni/${{ matrix.abi }}/libmullvad_jni.so"
-                NDK_TOOLCHAIN_STRIP_TOOL="$NDK_TOOLCHAIN_DIR/x86_64-linux-android-strip"
+                NDK_TOOLCHAIN_STRIP_TOOL="$NDK_TOOLCHAIN_DIR/${{ matrix.target }}-strip"
                 ./wireguard/build-wireguard-go.sh --android --no-docker
                 cargo build --target ${{ matrix.target }} --verbose --package mullvad-jni
                 cargo run --bin relay_list > dist-assets/relays.json
