@@ -44,9 +44,9 @@ jobs:
 
             - name: Checkout repository
               uses: actions/checkout@v3
-                with:
-                  repository: https://github.com/mullvad/mullvadvpn-app.git
-                  ref: test-mockapi
+              with:
+                repository: https://github.com/mullvad/mullvadvpn-app.git
+                ref: test-mockapi
 
             - name: Calculate native lib cache hash
               id: native-lib-cache-hash
