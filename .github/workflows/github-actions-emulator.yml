@@ -31,11 +31,18 @@ jobs:
         outputs:
           container_image: "${{ env.inner_container_image }}"
 
-    build:
+    build-rust:
         needs: prepare
         runs-on: ubuntu-latest
         container:
           image: "${{ needs.prepare.outputs.container_image }}"
+        strategy:
+          matrix:
+            include:
+            - abi: "x86_64"
+              target: "x86_64-linux-android"
+            - abi: "aarch64"
+              target: "aarch64-linux-android"
         steps:
             # Fix for HOME path overridden by GH runners when building in containers, see:
             # https://github.com/actions/runner/issues/863
@@ -47,7 +54,7 @@ jobs:
               with:
                 repository: mullvad/mullvadvpn-app
                 ref: test-mockapi
-            
+
             - name: Build relay list
               env:
                 RUSTFLAGS: --deny warnings
@@ -70,13 +77,6 @@ jobs:
 
             - name: Build native libraries
               if: steps.cache-native-libs.outputs.cache-hit != 'true'
-              strategy:
-                matrix:
-                  include:
-                  - abi: "x86_64"
-                    target: "x86_64-linux-android"
-                  - abi: "aarch64"
-                    target: "aarch64-linux-android"
               env:
                 RUSTFLAGS: --deny warnings
                 # ABI: x86_64
@@ -89,8 +89,39 @@ jobs:
                 NDK_TOOLCHAIN_STRIP_TOOL="$NDK_TOOLCHAIN_DIR/${{ matrix.target }}-strip"
                 ./wireguard/build-wireguard-go.sh --android --no-docker
                 cargo build --target ${{ matrix.target }} --verbose --package mullvad-jni
-                cargo run --bin relay_list > dist-assets/relays.json
                 $NDK_TOOLCHAIN_STRIP_TOOL --strip-debug --strip-unneeded -o "$STRIPPED_LIB_PATH" "$UNSTRIPPED_LIB_PATH"
+
+            - name: Upload rust
+              uses: actions/upload-artifact@v3
+              with:
+                name: extraJni
+                path: |
+                  android/app/build/extraJni
+                  dist-assets/relays.json
+                  dist-assets/api-ip-address.txt
+                if-no-files-found: error
+                retention-days: 1
+
+    build:
+        needs: build-rust
+        runs-on: ubuntu-latest
+        container:
+          image: "${{ needs.prepare.outputs.container_image }}"
+        steps:
+            # Fix for HOME path overridden by GH runners when building in containers, see:
+            # https://github.com/actions/runner/issues/863
+            - name: Fix HOME path
+              run: echo "HOME=/root" >> $GITHUB_ENV
+
+            - name: Checkout repository
+              uses: actions/checkout@v3
+              with:
+                repository: mullvad/mullvadvpn-app
+                ref: test-mockapi
+
+            - uses: actions/download-artifact@v3
+              with:
+                name: extraJni
 
             - name: Build Android app
               uses: burrunan/gradle-cache-action@v1
