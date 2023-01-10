@@ -16,7 +16,7 @@ jobs:
         - name: Checkout repository
           uses: actions/checkout@v3
           with:
-            repository: https://github.com/mullvad/mullvadvpn-app.git
+            repository: mullvad/mullvadvpn-app
             ref: test-mockapi
 
         - name: Use custom container image if specified
@@ -45,7 +45,7 @@ jobs:
             - name: Checkout repository
               uses: actions/checkout@v3
               with:
-                repository: https://github.com/mullvad/mullvadvpn-app.git
+                repository: mullvad/mullvadvpn-app
                 ref: test-mockapi
 
             - name: Calculate native lib cache hash
