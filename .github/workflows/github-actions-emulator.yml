@@ -4,66 +4,134 @@ on:
       branches:
         - wip-uia
     workflow_dispatch:
+      inputs:
+        override_container_image:
+          description: 'Override container image'
+          type: string
+          required: false
 jobs:
-    instrumented-tests:
-      name: uia tests
-      timeout-minutes: 60
-      strategy:
-        matrix:
-          # os: [macos-latest]
-          api: [32] #26, 27, 28, 29, 30, 31, 32 ,33
-          emutype: [google_apis] # default, aosp_atd, google_apis, playstore
+    prepare:
+        runs-on: ubuntu-latest
+        steps:
+        - name: Checkout repository
+          uses: actions/checkout@v3
+          repository: https://github.com/mullvad/mullvadvpn-app.git
+          ref: test-mockapi
 
-          include:
-            # - os: ubuntu-latest
-            #   emulator-options: -no-snapshot-save -no-window -noaudio -no-boot-anim -camera-back none
-            - os: macos-latest
-              emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+        - name: Use custom container image if specified
+          if: "${{ github.event.inputs.override_container_image != '' }}"
+          run: echo "inner_container_image=${{ github.event.inputs.override_container_image }}" >> $GITHUB_ENV
 
-        fail-fast: false
-      runs-on: self-hosted
-      steps:
-          # - name: Java 11
-          #   uses: actions/setup-java@v1
-          #   with:
-          #     java-version: 11
-          - name: Checkout repository
-            uses: actions/checkout@v3
-          - name: Build
-            shell: bash
-            run: |
-              github-actions-emulator/gradlew -p github-actions-emulator installDebug
+        - name: Use default container image and resolve digest
+          if: "${{ github.event.inputs.override_container_image == '' }}"
+          run: |
+            echo "inner_container_image=$(cat ./building/android-container-image.txt)" >> $GITHUB_ENV
 
-          # - name: Run Android instrumented tests
-          #   uses: reactivecircus/android-emulator-runner@v2
-          #   continue-on-error: true
-          #   env:
-          #     API_LEVEL: ${{ matrix.api }}
-          #   with:
-          #     force-avd-creation: true # TODO: Set to false
-          #     api-level: ${{ matrix.api }}
-          #     target: ${{ matrix.emutype }}
-          #     arch: x86_64
-          #     emulator-options: ${{ matrix.emulator-options }}
-          #     disable-animations: true
-          #     profile: pixel
-          #     script: |
-          #       github-actions-emulator/gradlew -p github-actions-emulator installDebug
-          #       adb shell am start -n com.albin_mullvad.gh_actions_emulator/.MainActivity
-          #       adb shell mkdir /sdcard/capture
-          #       sleep 10
-          #       adb shell screencap /sdcard/capture/mycap1.png
-          #       adb shell uiautomator dump -f /sdcard/capture/mydump.xml
-          #       adb shell screencap /sdcard/capture/mycap2.png
-          #       adb pull /sdcard/capture github-actions-emulator/app/build/outputs
-              
-          #     #github-actions-emulator/gradlew -p github-actions-emulator connectedCheck
-          # - name: Upload outputs and reports
-          #   uses: actions/upload-artifact@v3
-          #   with:
-          #     name: outputs-and-reports-${{ matrix.os }}
-          #     path: |
-          #       github-actions-emulator/app/build/outputs
-          #       github-actions-emulator/app/build/reports
-          #     # if-no-files-found: error
-          #     retention-days: 1
+        outputs:
+          container_image: "${{ env.inner_container_image }}"
+
+    build:
+        needs: prepare
+        runs-on: ubuntu-latest
+        container:
+          image: "${{ needs.prepare.outputs.container_image }}"
+        steps:
+            # Fix for HOME path overridden by GH runners when building in containers, see:
+            # https://github.com/actions/runner/issues/863
+            - name: Fix HOME path
+              run: echo "HOME=/root" >> $GITHUB_ENV
+
+            - name: Checkout repository
+              uses: actions/checkout@v3
+              repository: https://github.com/mullvad/mullvadvpn-app.git
+              ref: test-mockapi
+
+            - name: Calculate native lib cache hash
+              id: native-lib-cache-hash
+              shell: bash
+              run: |
+                non_android_hash="$(git grep --cached -l '' -- ':!android/' | xargs -d '\n' sha1sum | sha1sum | awk '{print $1}')"
+                echo "native_lib_hash=$non_android_hash" >> $GITHUB_OUTPUT
+
+            - name: Cache native libraries
+              uses: actions/cache@v3
+              id: cache-native-libs
+              with:
+                path: |
+                  ./android/app/build/extraJni
+                  ./dist-assets/relays.json
+                  ./dist-assets/api-ip-address.txt
+                key: android-native-libs-${{ runner.os }}-x86_64-${{ steps.native-lib-cache-hash.outputs.native_lib_hash }}
+
+            - name: Build native libraries
+              if: steps.cache-native-libs.outputs.cache-hit != 'true'
+              env:
+                RUSTFLAGS: --deny warnings
+                ABI: x86_64
+                TARGET: x86_64-linux-android
+                BUILD_TYPE: debug
+              run: |
+                ARCHITECTURES="$ABI"
+                UNSTRIPPED_LIB_PATH="$CARGO_TARGET_DIR/$TARGET/$BUILD_TYPE/libmullvad_jni.so"
+                STRIPPED_LIB_PATH="./android/app/build/extraJni/$ABI/libmullvad_jni.so"
+                NDK_TOOLCHAIN_STRIP_TOOL="$NDK_TOOLCHAIN_DIR/x86_64-linux-android-strip"
+                ./wireguard/build-wireguard-go.sh --android --no-docker
+                cargo build --target $TARGET --verbose --package mullvad-jni
+                cargo run --bin relay_list > dist-assets/relays.json
+                $NDK_TOOLCHAIN_STRIP_TOOL --strip-debug --strip-unneeded -o "$STRIPPED_LIB_PATH" "$UNSTRIPPED_LIB_PATH"
+
+            - name: Build Android app
+              uses: burrunan/gradle-cache-action@v1
+              with:
+                job-id: jdk11
+                arguments: assembleDebug
+                gradle-version: wrapper
+                build-root-directory: android
+
+            - name: Run unit tests
+              uses: burrunan/gradle-cache-action@v1
+              with:
+                job-id: jdk11
+                arguments: testDebugUnitTest
+                gradle-version: wrapper
+                build-root-directory: android
+                execution-only-caches: true
+
+            - name: Assemble instrumented test apk
+              uses: burrunan/gradle-cache-action@v1
+              with:
+                job-id: jdk11
+                arguments: assembleAndroidTest
+                gradle-version: wrapper
+                build-root-directory: android
+                execution-only-caches: true
+
+            - name: Upload apks
+              uses: actions/upload-artifact@v3
+              with:
+                name: apks
+                path: android/app/build/outputs/apk
+                if-no-files-found: error
+                retention-days: 1
+
+    # instrumented-tests:
+    #   name: uia tests
+    #   timeout-minutes: 60
+    #   strategy:
+    #     matrix:
+    #       # os: [macos-latest]
+    #       api: [32] #26, 27, 28, 29, 30, 31, 32 ,33
+    #       emutype: [google_apis] # default, aosp_atd, google_apis, playstore
+
+    #       include:
+    #         # - os: ubuntu-latest
+    #         #   emulator-options: -no-snapshot-save -no-window -noaudio -no-boot-anim -camera-back none
+    #         - os: macos-latest
+    #           emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+
+    #     fail-fast: false
+    #   runs-on: self-hosted
+    #   steps:
+    #       - name: Checkout repository
+    #         uses: actions/checkout@v3
+    #         repository: https://github.com/mullvad/mullvadvpn-app.git
