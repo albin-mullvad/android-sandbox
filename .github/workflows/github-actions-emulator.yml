@@ -129,6 +129,7 @@ jobs:
 
     instrumented-tests:
       name: uia tests
+      needs: build
       timeout-minutes: 60
     #   strategy:
     #     matrix:
