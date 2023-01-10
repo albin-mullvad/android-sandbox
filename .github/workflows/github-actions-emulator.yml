@@ -47,6 +47,11 @@ jobs:
               with:
                 repository: mullvad/mullvadvpn-app
                 ref: test-mockapi
+            
+            - name: Build relay list
+              env:
+                RUSTFLAGS: --deny warnings
+              run: cargo run --bin relay_list > dist-assets/relays.json
 
             - name: Calculate native lib cache hash
               id: native-lib-cache-hash
@@ -61,24 +66,29 @@ jobs:
               with:
                 path: |
                   ./android/app/build/extraJni
-                  ./dist-assets/relays.json
-                  ./dist-assets/api-ip-address.txt
-                key: android-native-libs-${{ runner.os }}-x86_64-${{ steps.native-lib-cache-hash.outputs.native_lib_hash }}
+                key: android-native-libs-${{ runner.os }}-${{ steps.native-lib-cache-hash.outputs.native_lib_hash }}-test-v1
 
             - name: Build native libraries
               if: steps.cache-native-libs.outputs.cache-hit != 'true'
+              strategy:
+                matrix:
+                  include:
+                  - abi: "x86_64"
+                    target: "x86_64-linux-android"
+                  - abi: "aarch64"
+                    target: "aarch64-linux-android"
               env:
                 RUSTFLAGS: --deny warnings
-                ABI: x86_64
-                TARGET: x86_64-linux-android
+                # ABI: x86_64
+                # TARGET: x86_64-linux-android
                 BUILD_TYPE: debug
               run: |
-                ARCHITECTURES="$ABI"
-                UNSTRIPPED_LIB_PATH="$CARGO_TARGET_DIR/$TARGET/$BUILD_TYPE/libmullvad_jni.so"
-                STRIPPED_LIB_PATH="./android/app/build/extraJni/$ABI/libmullvad_jni.so"
+                ARCHITECTURES="${{ matrix.abi }}"
+                UNSTRIPPED_LIB_PATH="$CARGO_TARGET_DIR/${{ matrix.target }}/$BUILD_TYPE/libmullvad_jni.so"
+                STRIPPED_LIB_PATH="./android/app/build/extraJni/${{ matrix.abi }}/libmullvad_jni.so"
                 NDK_TOOLCHAIN_STRIP_TOOL="$NDK_TOOLCHAIN_DIR/x86_64-linux-android-strip"
                 ./wireguard/build-wireguard-go.sh --android --no-docker
-                cargo build --target $TARGET --verbose --package mullvad-jni
+                cargo build --target ${{ matrix.target }} --verbose --package mullvad-jni
                 cargo run --bin relay_list > dist-assets/relays.json
                 $NDK_TOOLCHAIN_STRIP_TOOL --strip-debug --strip-unneeded -o "$STRIPPED_LIB_PATH" "$UNSTRIPPED_LIB_PATH"
 
