@@ -108,17 +108,28 @@ jobs:
                 build-root-directory: android
                 execution-only-caches: true
 
+            - name: Assemble mockapi instrumented test apk
+              uses: burrunan/gradle-cache-action@v1
+              with:
+                job-id: jdk11
+                arguments: :test:mockapi:assemble
+                gradle-version: wrapper
+                build-root-directory: android
+                execution-only-caches: true
+
             - name: Upload apks
               uses: actions/upload-artifact@v3
               with:
                 name: apks
-                path: android/app/build/outputs/apk
+                  android/app/build/outputs/apk
+                  android/app/build/extraJni
+                  android/test/mockapi/build/outputs/apk
                 if-no-files-found: error
                 retention-days: 1
 
-    # instrumented-tests:
-    #   name: uia tests
-    #   timeout-minutes: 60
+    instrumented-tests:
+      name: uia tests
+      timeout-minutes: 60
     #   strategy:
     #     matrix:
     #       # os: [macos-latest]
@@ -132,8 +143,19 @@ jobs:
     #           emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
 
     #     fail-fast: false
-    #   runs-on: self-hosted
-    #   steps:
-    #       - name: Checkout repository
-    #         uses: actions/checkout@v3
-    #         repository: https://github.com/mullvad/mullvadvpn-app.git
+      runs-on: self-hosted
+      steps:
+        - name: Checkout repository
+          uses: actions/checkout@v3
+          with:
+            repository: mullvad/mullvadvpn-app
+            ref: test-mockapi
+
+        - uses: actions/download-artifact@v3
+          with:
+            name: apks
+            path: android
+
+        - name: Calculate native lib cache hash
+          shell: bash
+          run: android/scripts/run-instrumented-tests.sh mockapi
