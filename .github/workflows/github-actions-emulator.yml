@@ -75,7 +75,7 @@ jobs:
               with:
                 path: |
                   ./android/app/build/extraJni
-                key: android-native-libs-${{ runner.os }}-${{ steps.native-lib-cache-hash.outputs.native_lib_hash }}-test-v1
+                key: android-native-libs-${{ runner.os }}-${{ matrix.abi }}-${{ steps.native-lib-cache-hash.outputs.native_lib_hash }}-test-v1
 
             - name: Build native libraries
               if: steps.cache-native-libs.outputs.cache-hit != 'true'
