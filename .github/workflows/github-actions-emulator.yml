@@ -201,8 +201,8 @@ jobs:
             name: apks
             path: android
 
-        - name: Calculate native lib cache hash
-          shell: bash
+        - name: Run instrumented tests
+          shell: bash -ieo pipefail {0}
           run: |
             curl -sL https://dl.google.com/android/maven2/androidx/test/orchestrator/1.4.2/orchestrator-1.4.2.apk -o /tmp/orchestrator.apk
             curl -sL https://dl.google.com/android/maven2/androidx/test/services/test-services/1.4.2/test-services-1.4.2.apk -o /tmp/test-services.apk
