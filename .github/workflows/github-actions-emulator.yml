@@ -17,7 +17,6 @@ jobs:
           uses: actions/checkout@v3
           with:
             repository: mullvad/mullvadvpn-app
-            ref: test-mockapi
 
         - name: Use custom container image if specified
           if: "${{ github.event.inputs.override_container_image != '' }}"
@@ -55,7 +54,6 @@ jobs:
               uses: actions/checkout@v3
               with:
                 repository: mullvad/mullvadvpn-app
-                ref: test-mockapi
 
             - name: Build relay list
               env:
@@ -119,7 +117,6 @@ jobs:
               uses: actions/checkout@v3
               with:
                 repository: mullvad/mullvadvpn-app
-                ref: test-mockapi
 
             - uses: actions/download-artifact@v3
               with:
@@ -194,7 +191,6 @@ jobs:
           uses: actions/checkout@v3
           with:
             repository: mullvad/mullvadvpn-app
-            ref: test-mockapi
 
         - uses: actions/download-artifact@v3
           with:
