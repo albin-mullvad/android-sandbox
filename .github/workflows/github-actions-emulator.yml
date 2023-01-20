@@ -208,4 +208,4 @@ jobs:
             curl -sL https://dl.google.com/android/maven2/androidx/test/services/test-services/1.4.2/test-services-1.4.2.apk -o /tmp/test-services.apk
             export ORCHESTRATOR_APK_PATH=/tmp/orchestrator.apk
             export TEST_SERVICES_APK_PATH=/tmp/test-services.apk
-            android/scripts/run-instrumented-tests.sh mockapi
+            android/scripts/run-instrumented-tests.sh app
